@@ -64,7 +64,7 @@ public class BitbucketFetcherTest {
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
-        ReflectionTestUtils.setField(fetcher, "httpClientTimeout", 1_000);
+        ReflectionTestUtils.setField(fetcher, "httpClientTimeout", 10_000);
 
         InputStream fetch = fetcher.fetch().getContent();
 
@@ -83,7 +83,7 @@ public class BitbucketFetcherTest {
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
-        ReflectionTestUtils.setField(fetcher, "httpClientTimeout", 1_000);
+        ReflectionTestUtils.setField(fetcher, "httpClientTimeout", 10_000);
 
         InputStream fetch = fetcher.fetch().getContent();
 
@@ -105,7 +105,7 @@ public class BitbucketFetcherTest {
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
-        ReflectionTestUtils.setField(fetcher, "httpClientTimeout", 1_000);
+        ReflectionTestUtils.setField(fetcher, "httpClientTimeout", 10_000);
 
         InputStream fetch = fetcher.fetch().getContent();
 

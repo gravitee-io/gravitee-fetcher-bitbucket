@@ -16,10 +16,13 @@
 package io.gravitee.fetcher.bitbucket;
 
 import io.gravitee.common.http.HttpStatusCode;
+import io.gravitee.common.utils.UUID;
 import io.gravitee.fetcher.api.Resource;
 import io.gravitee.fetcher.api.Fetcher;
 import io.gravitee.fetcher.api.FetcherException;
 import io.gravitee.fetcher.bitbucket.vertx.VertxCompletableFuture;
+import io.gravitee.node.api.Node;
+import io.gravitee.node.api.utils.NodeUtils;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -52,6 +55,8 @@ public class BitbucketFetcher implements Fetcher {
 
     @Autowired
     private Vertx vertx;
+    @Autowired
+    private Node node;
 
     @Value("${httpClient.timeout:10000}")
     private int httpClientTimeout;
@@ -226,6 +231,8 @@ public class BitbucketFetcher implements Fetcher {
                     requestUri.getHost(),
                     requestUri.toString()
             );
+            request.putHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT, NodeUtils.userAgent(node));
+            request.putHeader("X-Gravitee-Request-Id", io.gravitee.common.utils.UUID.toString(UUID.random()));
 
             // Follow redirect since Gitlab may return a 3xx status code
             request.setFollowRedirects(true);

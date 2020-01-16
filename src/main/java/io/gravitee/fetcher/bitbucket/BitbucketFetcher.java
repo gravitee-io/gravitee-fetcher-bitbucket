@@ -17,6 +17,7 @@ package io.gravitee.fetcher.bitbucket;
 
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.utils.UUID;
+import io.gravitee.fetcher.api.FetcherConfiguration;
 import io.gravitee.fetcher.api.Resource;
 import io.gravitee.fetcher.api.Fetcher;
 import io.gravitee.fetcher.api.FetcherException;
@@ -105,6 +106,11 @@ public class BitbucketFetcher implements Fetcher {
             logger.error(ex.getMessage(), ex);
             throw new FetcherException("Unable to fetch Bitbucket content (" + ex.getMessage() + ")", ex);
         }
+    }
+
+    @Override
+    public FetcherConfiguration getConfiguration() {
+        return bitbucketFetcherConfiguration;
     }
 
     private void checkRequiredFields() throws FetcherException {

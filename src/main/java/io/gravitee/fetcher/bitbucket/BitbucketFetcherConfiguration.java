@@ -15,6 +15,7 @@ package io.gravitee.fetcher.bitbucket;
  * limitations under the License.
  */
 import io.gravitee.fetcher.api.FetcherConfiguration;
+import io.gravitee.fetcher.api.Sensitive;
 
 /**
  * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com) 
@@ -28,6 +29,7 @@ public class BitbucketFetcherConfiguration implements FetcherConfiguration {
     private String branchOrTag;
     private String filepath;
     private String login;
+    @Sensitive
     private String password;
     private boolean useSystemProxy;
     private String editLink;

@@ -17,10 +17,10 @@ package io.gravitee.fetcher.bitbucket;
 
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.common.utils.UUID;
-import io.gravitee.fetcher.api.FetcherConfiguration;
-import io.gravitee.fetcher.api.Resource;
 import io.gravitee.fetcher.api.Fetcher;
+import io.gravitee.fetcher.api.FetcherConfiguration;
 import io.gravitee.fetcher.api.FetcherException;
+import io.gravitee.fetcher.api.Resource;
 import io.gravitee.fetcher.bitbucket.vertx.VertxCompletableFuture;
 import io.gravitee.node.api.Node;
 import io.gravitee.node.api.utils.NodeUtils;
@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.support.CronSequenceGenerator;
 
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
@@ -117,8 +118,18 @@ public class BitbucketFetcher implements Fetcher {
         if (bitbucketFetcherConfiguration.getBranchOrTag() == null
                 || bitbucketFetcherConfiguration.getBitbucketUrl() == null
                 || bitbucketFetcherConfiguration.getRepository() == null
-                || bitbucketFetcherConfiguration.getUsername() == null) {
+                || bitbucketFetcherConfiguration.getUsername() == null
+                || (bitbucketFetcherConfiguration.isAutoFetch() && (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty()))
+        ) {
             throw new FetcherException("Some required configuration attributes are missing.", null);
+        }
+
+        if (bitbucketFetcherConfiguration.isAutoFetch() && bitbucketFetcherConfiguration.getFetchCron() != null) {
+            try {
+                new CronSequenceGenerator(bitbucketFetcherConfiguration.getFetchCron());
+            } catch (IllegalArgumentException e) {
+                throw new FetcherException("Cron expression is invalid", e);
+            }
         }
     }
 

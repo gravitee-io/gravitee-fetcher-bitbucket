@@ -21,14 +21,13 @@ import io.gravitee.fetcher.api.Fetcher;
 import io.gravitee.fetcher.api.FetcherConfiguration;
 import io.gravitee.fetcher.api.FetcherException;
 import io.gravitee.fetcher.api.Resource;
-import io.gravitee.fetcher.bitbucket.vertx.VertxCompletableFuture;
 import io.gravitee.node.api.Node;
 import io.gravitee.node.api.utils.NodeUtils;
-import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
-import io.vertx.core.http.impl.HttpUtils;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
 import org.slf4j.Logger;
@@ -157,7 +156,7 @@ public class BitbucketFetcher implements Fetcher {
     }
 
     private CompletableFuture<Buffer> fetchContent() throws Exception {
-        CompletableFuture<Buffer> future = new VertxCompletableFuture<>(vertx);
+        Promise<Buffer> promise = Promise.promise();
 
         String url = getEncodedRequestUrl();
 
@@ -191,110 +190,82 @@ public class BitbucketFetcher implements Fetcher {
 
         final HttpClient httpClient = vertx.createHttpClient(options);
 
-        httpClient.redirectHandler(resp -> {
-            try {
-                int statusCode = resp.statusCode();
-                String location = resp.getHeader(HttpHeaders.LOCATION);
-                if (location != null && (statusCode == 301 || statusCode == 302 || statusCode == 303 || statusCode == 307
-                        || statusCode == 308)) {
-                    HttpMethod m = resp.request().method();
-                    if (statusCode == 301 || statusCode == 302 || statusCode == 303) {
-                        m = HttpMethod.GET;
-                    }
-                    URI uri = HttpUtils.resolveURIReference(resp.request().absoluteURI(), location);
-                    boolean redirectSsl;
-                    int port = uri.getPort();
-                    String protocol = uri.getScheme();
-                    char chend = protocol.charAt(protocol.length() - 1);
-                    if (chend == 'p') {
-                        redirectSsl = false;
-                        if (port == -1) {
-                            port = 80;
-                        }
-                    } else if (chend == 's') {
-                        redirectSsl = true;
-                        if (port == -1) {
-                            port = 443;
-                        }
-                    } else {
-                        return null;
-                    }
-                    String requestURI = uri.getPath();
-                    if (uri.getQuery() != null) {
-                        requestURI += "?" + uri.getQuery();
-                    }
-
-                    RequestOptions requestOptions = new RequestOptions()
-                            .setHost(uri.getHost())
-                            .setPort(port)
-                            .setSsl(redirectSsl)
-                            .setURI(requestURI);
-
-                    return Future.succeededFuture(httpClient.request(m, requestOptions));
-                }
-                return null;
-            } catch (Exception e) {
-                return Future.failedFuture(e);
-            }
-        });
-
         final int port = requestUri.getPort() != -1 ? requestUri.getPort() :
                 (HTTPS_SCHEME.equals(requestUri.getScheme()) ? 443 : 80);
 
         try {
-            HttpClientRequest request = httpClient.request(
-                    HttpMethod.GET,
-                    port,
-                    requestUri.getHost(),
-                    requestUri.toString()
-            );
-            request.putHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT, NodeUtils.userAgent(node));
-            request.putHeader("X-Gravitee-Request-Id", io.gravitee.common.utils.UUID.toString(UUID.random()));
-
-            // Follow redirect since Gitlab may return a 3xx status code
-            request.setFollowRedirects(true);
-
-            request.setTimeout(httpClientTimeout);
+            final RequestOptions reqOptions = new RequestOptions()
+                    .setMethod(HttpMethod.GET)
+                    .setPort(port)
+                    .setHost(requestUri.getHost())
+                    .setURI(requestUri.toString())
+                    .putHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT, NodeUtils.userAgent(node))
+                    .putHeader("X-Gravitee-Request-Id", UUID.toString(UUID.random()))
+                    .setTimeout(httpClientTimeout)
+                    .setFollowRedirects(true);
 
             if (bitbucketFetcherConfiguration.getLogin() != null && bitbucketFetcherConfiguration.getPassword() != null) {
                 String encoding = Base64.getEncoder().encodeToString(
                         (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes());
-                request.putHeader("Authorization", "Basic " + encoding);
+                reqOptions.putHeader("Authorization", "Basic " + encoding);
             }
 
-            request.handler(response -> {
-                if (response.statusCode() == HttpStatusCode.OK_200) {
-                    response.bodyHandler(buffer -> {
-                        future.complete(buffer);
+            httpClient.request(reqOptions)
+                    .onFailure(new Handler<Throwable>() {
+                        @Override
+                        public void handle(Throwable throwable) {
+                            promise.fail(throwable);
 
-                        // Close client
-                        httpClient.close();
+                            // Close client
+                            httpClient.close();
+                        }
+                    })
+                    .onSuccess(new Handler<HttpClientRequest>() {
+                        @Override
+                        public void handle(HttpClientRequest request) {
+                            request.response(asyncResponse -> {
+                                if (asyncResponse.failed()) {
+                                    promise.fail(asyncResponse.cause());
+
+                                    // Close client
+                                    httpClient.close();
+                                } else {
+                                    HttpClientResponse response = asyncResponse.result();
+                                    if (response.statusCode() == HttpStatusCode.OK_200) {
+                                        response.bodyHandler(buffer -> {
+                                            promise.complete(buffer);
+
+                                            // Close client
+                                            httpClient.close();
+                                        });
+                                    } else {
+                                        promise.fail(new FetcherException("Unable to fetch '" + url + "'. Status code: " + response.statusCode() + ". Message: " + response.statusMessage(), null));
+
+                                        // Close client
+                                        httpClient.close();
+                                    }
+                                }
+                            });
+
+                            request.exceptionHandler(throwable -> {
+                                try {
+                                    promise.fail(throwable);
+
+                                    // Close client
+                                    httpClient.close();
+                                } catch (IllegalStateException ise) {
+                                    // Do not take care about exception when closing client
+                                }
+                            });
+
+                            request.end();
+                        }
                     });
-                } else {
-                    future.completeExceptionally(new FetcherException("Unable to fetch '" + url + "'. Status code: " + response.statusCode() + ". Message: " + response.statusMessage(), null));
-
-                    // Close client
-                    httpClient.close();
-                }
-            });
-
-            request.exceptionHandler(event -> {
-                try {
-                    future.completeExceptionally(event);
-
-                    // Close client
-                    httpClient.close();
-                } catch (IllegalStateException ise) {
-                    // Do not take care about exception when closing client
-                }
-            });
-
-            request.end();
         } catch (Exception ex) {
             logger.error("Unable to fetch content using HTTP", ex);
-            future.completeExceptionally(ex);
+            promise.fail(ex);
         }
 
-        return future;
+        return promise.future().toCompletionStage().toCompletableFuture();
     }
 }

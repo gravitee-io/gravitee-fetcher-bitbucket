@@ -30,24 +30,24 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.support.CronSequenceGenerator;
-
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.support.CronSequenceGenerator;
 
 /**
- * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com) 
+ * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
  * @author GraviteeSource Team
  */
 public class BitbucketFetcher implements Fetcher {
+
     private static final Logger logger = LoggerFactory.getLogger(BitbucketFetcher.class);
 
     private static final String HTTPS_SCHEME = "https";
@@ -56,29 +56,37 @@ public class BitbucketFetcher implements Fetcher {
 
     @Autowired
     private Vertx vertx;
+
     @Autowired
     private Node node;
 
     @Value("${httpClient.timeout:10000}")
     private int httpClientTimeout;
+
     @Value("${httpClient.proxy.type:HTTP}")
     private String httpClientProxyType;
 
     @Value("${httpClient.proxy.http.host:#{systemProperties['http.proxyHost'] ?: 'localhost'}}")
     private String httpClientProxyHttpHost;
+
     @Value("${httpClient.proxy.http.port:#{systemProperties['http.proxyPort'] ?: 3128}}")
     private int httpClientProxyHttpPort;
+
     @Value("${httpClient.proxy.http.username:#{null}}")
     private String httpClientProxyHttpUsername;
+
     @Value("${httpClient.proxy.http.password:#{null}}")
     private String httpClientProxyHttpPassword;
 
     @Value("${httpClient.proxy.https.host:#{systemProperties['https.proxyHost'] ?: 'localhost'}}")
     private String httpClientProxyHttpsHost;
+
     @Value("${httpClient.proxy.https.port:#{systemProperties['https.proxyPort'] ?: 3128}}")
     private int httpClientProxyHttpsPort;
+
     @Value("${httpClient.proxy.https.username:#{null}}")
     private String httpClientProxyHttpsUsername;
+
     @Value("${httpClient.proxy.https.password:#{null}}")
     private String httpClientProxyHttpsPassword;
 
@@ -114,11 +122,15 @@ public class BitbucketFetcher implements Fetcher {
     }
 
     private void checkRequiredFields() throws FetcherException {
-        if (bitbucketFetcherConfiguration.getBranchOrTag() == null
-                || bitbucketFetcherConfiguration.getBitbucketUrl() == null
-                || bitbucketFetcherConfiguration.getRepository() == null
-                || bitbucketFetcherConfiguration.getUsername() == null
-                || (bitbucketFetcherConfiguration.isAutoFetch() && (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty()))
+        if (
+            bitbucketFetcherConfiguration.getBranchOrTag() == null ||
+            bitbucketFetcherConfiguration.getBitbucketUrl() == null ||
+            bitbucketFetcherConfiguration.getRepository() == null ||
+            bitbucketFetcherConfiguration.getUsername() == null ||
+            (
+                bitbucketFetcherConfiguration.isAutoFetch() &&
+                (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty())
+            )
         ) {
             throw new FetcherException("Some required configuration attributes are missing.", null);
         }
@@ -135,24 +147,39 @@ public class BitbucketFetcher implements Fetcher {
     private String buildEditUrl() throws FetcherException {
         checkRequiredFields();
         final String bitbucketUrl = bitbucketFetcherConfiguration.getBitbucketUrl().replace("api.", "");
-        return bitbucketUrl.substring(0, bitbucketUrl.lastIndexOf('/'))
-                + '/' + bitbucketFetcherConfiguration.getUsername()
-                + '/' + bitbucketFetcherConfiguration.getRepository()
-                + "/src/" + (bitbucketFetcherConfiguration.getBranchOrTag() == null ?
-                "master" : bitbucketFetcherConfiguration.getBranchOrTag())
-                + '/' +  bitbucketFetcherConfiguration.getFilepath() + "?spa=0&mode=edit";
+        return (
+            bitbucketUrl.substring(0, bitbucketUrl.lastIndexOf('/')) +
+            '/' +
+            bitbucketFetcherConfiguration.getUsername() +
+            '/' +
+            bitbucketFetcherConfiguration.getRepository() +
+            "/src/" +
+            (bitbucketFetcherConfiguration.getBranchOrTag() == null ? "master" : bitbucketFetcherConfiguration.getBranchOrTag()) +
+            '/' +
+            bitbucketFetcherConfiguration.getFilepath() +
+            "?spa=0&mode=edit"
+        );
     }
 
     private String getEncodedRequestUrl() throws UnsupportedEncodingException {
-        String ref = ((bitbucketFetcherConfiguration.getBranchOrTag() == null || bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty())
-                ? "master"
-                : bitbucketFetcherConfiguration.getBranchOrTag().trim());
+        String ref =
+            (
+                (bitbucketFetcherConfiguration.getBranchOrTag() == null || bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty())
+                    ? "master"
+                    : bitbucketFetcherConfiguration.getBranchOrTag().trim()
+            );
 
-        return bitbucketFetcherConfiguration.getBitbucketUrl().trim()
-                + "/repositories/" + bitbucketFetcherConfiguration.getUsername()
-                + "/" + bitbucketFetcherConfiguration.getRepository()
-                + "/src/" + ref
-                + "/" + bitbucketFetcherConfiguration.getFilepath();
+        return (
+            bitbucketFetcherConfiguration.getBitbucketUrl().trim() +
+            "/repositories/" +
+            bitbucketFetcherConfiguration.getUsername() +
+            "/" +
+            bitbucketFetcherConfiguration.getRepository() +
+            "/src/" +
+            ref +
+            "/" +
+            bitbucketFetcherConfiguration.getFilepath()
+        );
     }
 
     private CompletableFuture<Buffer> fetchContent() throws Exception {
@@ -164,12 +191,12 @@ public class BitbucketFetcher implements Fetcher {
         boolean ssl = HTTPS_SCHEME.equalsIgnoreCase(requestUri.getScheme());
 
         final HttpClientOptions options = new HttpClientOptions()
-                .setSsl(ssl)
-                .setTrustAll(true)
-                .setMaxPoolSize(1)
-                .setKeepAlive(false)
-                .setTcpKeepAlive(false)
-                .setConnectTimeout(httpClientTimeout);
+            .setSsl(ssl)
+            .setTrustAll(true)
+            .setMaxPoolSize(1)
+            .setKeepAlive(false)
+            .setTcpKeepAlive(false)
+            .setConnectTimeout(httpClientTimeout);
 
         if (bitbucketFetcherConfiguration.isUseSystemProxy()) {
             ProxyOptions proxyOptions = new ProxyOptions();
@@ -190,28 +217,32 @@ public class BitbucketFetcher implements Fetcher {
 
         final HttpClient httpClient = vertx.createHttpClient(options);
 
-        final int port = requestUri.getPort() != -1 ? requestUri.getPort() :
-                (HTTPS_SCHEME.equals(requestUri.getScheme()) ? 443 : 80);
+        final int port = requestUri.getPort() != -1 ? requestUri.getPort() : (HTTPS_SCHEME.equals(requestUri.getScheme()) ? 443 : 80);
 
         try {
             final RequestOptions reqOptions = new RequestOptions()
-                    .setMethod(HttpMethod.GET)
-                    .setPort(port)
-                    .setHost(requestUri.getHost())
-                    .setURI(requestUri.toString())
-                    .putHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT, NodeUtils.userAgent(node))
-                    .putHeader("X-Gravitee-Request-Id", UUID.toString(UUID.random()))
-                    .setTimeout(httpClientTimeout)
-                    .setFollowRedirects(true);
+                .setMethod(HttpMethod.GET)
+                .setPort(port)
+                .setHost(requestUri.getHost())
+                .setURI(requestUri.toString())
+                .putHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT, NodeUtils.userAgent(node))
+                .putHeader("X-Gravitee-Request-Id", UUID.toString(UUID.random()))
+                .setTimeout(httpClientTimeout)
+                .setFollowRedirects(true);
 
             if (bitbucketFetcherConfiguration.getLogin() != null && bitbucketFetcherConfiguration.getPassword() != null) {
-                String encoding = Base64.getEncoder().encodeToString(
-                        (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes());
+                String encoding = Base64
+                    .getEncoder()
+                    .encodeToString(
+                        (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes()
+                    );
                 reqOptions.putHeader("Authorization", "Basic " + encoding);
             }
 
-            httpClient.request(reqOptions)
-                    .onFailure(new Handler<Throwable>() {
+            httpClient
+                .request(reqOptions)
+                .onFailure(
+                    new Handler<Throwable>() {
                         @Override
                         public void handle(Throwable throwable) {
                             promise.fail(throwable);
@@ -219,8 +250,10 @@ public class BitbucketFetcher implements Fetcher {
                             // Close client
                             httpClient.close();
                         }
-                    })
-                    .onSuccess(new Handler<HttpClientRequest>() {
+                    }
+                )
+                .onSuccess(
+                    new Handler<HttpClientRequest>() {
                         @Override
                         public void handle(HttpClientRequest request) {
                             request.response(asyncResponse -> {
@@ -239,7 +272,17 @@ public class BitbucketFetcher implements Fetcher {
                                             httpClient.close();
                                         });
                                     } else {
-                                        promise.fail(new FetcherException("Unable to fetch '" + url + "'. Status code: " + response.statusCode() + ". Message: " + response.statusMessage(), null));
+                                        promise.fail(
+                                            new FetcherException(
+                                                "Unable to fetch '" +
+                                                url +
+                                                "'. Status code: " +
+                                                response.statusCode() +
+                                                ". Message: " +
+                                                response.statusMessage(),
+                                                null
+                                            )
+                                        );
 
                                         // Close client
                                         httpClient.close();
@@ -260,7 +303,8 @@ public class BitbucketFetcher implements Fetcher {
 
                             request.end();
                         }
-                    });
+                    }
+                );
         } catch (Exception ex) {
             logger.error("Unable to fetch content using HTTP", ex);
             promise.fail(ex);

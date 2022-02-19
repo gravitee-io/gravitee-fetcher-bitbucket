@@ -1,4 +1,5 @@
 package io.gravitee.fetcher.bitbucket;
+
 /**
  * Copyright (C) 2015 The Gravitee team (http://gravitee.io)
  *
@@ -18,7 +19,7 @@ import io.gravitee.fetcher.api.FetcherConfiguration;
 import io.gravitee.fetcher.api.Sensitive;
 
 /**
- * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com) 
+ * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
  * @author GraviteeSource Team
  */
 public class BitbucketFetcherConfiguration implements FetcherConfiguration {
@@ -29,8 +30,10 @@ public class BitbucketFetcherConfiguration implements FetcherConfiguration {
     private String branchOrTag;
     private String filepath;
     private String login;
+
     @Sensitive
     private String password;
+
     private boolean useSystemProxy;
     private String editLink;
 

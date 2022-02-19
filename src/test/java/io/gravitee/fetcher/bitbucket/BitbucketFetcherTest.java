@@ -15,22 +15,21 @@
  */
 package io.gravitee.fetcher.bitbucket;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.gravitee.fetcher.api.FetcherException;
 import io.vertx.core.Vertx;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 /**
  * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
@@ -53,10 +52,10 @@ public class BitbucketFetcherTest {
 
     @Test
     public void shouldNotFetchWithoutContent() throws FetcherException {
-        stubFor(get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("")));
+        stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
+                .willReturn(aResponse().withStatus(200).withBody(""))
+        );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
@@ -73,9 +72,7 @@ public class BitbucketFetcherTest {
 
     @Test
     public void shouldNotFetchEmptyBody() throws Exception {
-        stubFor(get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse()
-                        .withStatus(200)));
+        stubFor(get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(200)));
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
@@ -94,10 +91,10 @@ public class BitbucketFetcherTest {
     public void shouldFetchContent() throws Exception {
         String content = "Gravitee.io is awesome!";
 
-        stubFor(get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody(content)));
+        stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
+                .willReturn(aResponse().withStatus(200).withBody(content))
+        );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
@@ -119,13 +116,10 @@ public class BitbucketFetcherTest {
 
     @Test(expected = FetcherException.class)
     public void shouldThrowExceptionWhenStatusNot200() throws Exception {
-
-        stubFor(get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse()
-                        .withStatus(401)
-                        .withBody("{\n" +
-                                "  \"message\": \"401 Unauthorized\"\n" +
-                                "}")));
+        stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
+                .willReturn(aResponse().withStatus(401).withBody("{\n" + "  \"message\": \"401 Unauthorized\"\n" + "}"))
+        );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");

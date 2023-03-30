@@ -224,7 +224,7 @@ public class BitbucketFetcher implements Fetcher {
                 .setMethod(HttpMethod.GET)
                 .setPort(port)
                 .setHost(requestUri.getHost())
-                .setURI(requestUri.toString())
+                .setURI(requestUri.getPath())
                 .putHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT, NodeUtils.userAgent(node))
                 .putHeader("X-Gravitee-Request-Id", UUID.toString(UUID.random()))
                 .setTimeout(httpClientTimeout)
@@ -241,70 +241,60 @@ public class BitbucketFetcher implements Fetcher {
 
             httpClient
                 .request(reqOptions)
-                .onFailure(
-                    new Handler<Throwable>() {
-                        @Override
-                        public void handle(Throwable throwable) {
+                .onFailure(throwable -> {
+                    promise.fail(throwable);
+
+                    // Close client
+                    httpClient.close();
+                })
+                .onSuccess(request -> {
+                    request.response(asyncResponse -> {
+                        if (asyncResponse.failed()) {
+                            promise.fail(asyncResponse.cause());
+
+                            // Close client
+                            httpClient.close();
+                        } else {
+                            HttpClientResponse response = asyncResponse.result();
+                            if (response.statusCode() == HttpStatusCode.OK_200) {
+                                response.bodyHandler(buffer -> {
+                                    promise.complete(buffer);
+
+                                    // Close client
+                                    httpClient.close();
+                                });
+                            } else {
+                                promise.fail(
+                                    new FetcherException(
+                                        "Unable to fetch '" +
+                                        url +
+                                        "'. Status code: " +
+                                        response.statusCode() +
+                                        ". Message: " +
+                                        response.statusMessage(),
+                                        null
+                                    )
+                                );
+
+                                // Close client
+                                httpClient.close();
+                            }
+                        }
+                    });
+
+                    request.exceptionHandler(throwable -> {
+                        try {
                             promise.fail(throwable);
 
                             // Close client
                             httpClient.close();
+                        } catch (IllegalStateException ise) {
+                            // Do not take care about exception when closing client
                         }
-                    }
-                )
-                .onSuccess(
-                    new Handler<HttpClientRequest>() {
-                        @Override
-                        public void handle(HttpClientRequest request) {
-                            request.response(asyncResponse -> {
-                                if (asyncResponse.failed()) {
-                                    promise.fail(asyncResponse.cause());
+                    });
 
-                                    // Close client
-                                    httpClient.close();
-                                } else {
-                                    HttpClientResponse response = asyncResponse.result();
-                                    if (response.statusCode() == HttpStatusCode.OK_200) {
-                                        response.bodyHandler(buffer -> {
-                                            promise.complete(buffer);
-
-                                            // Close client
-                                            httpClient.close();
-                                        });
-                                    } else {
-                                        promise.fail(
-                                            new FetcherException(
-                                                "Unable to fetch '" +
-                                                url +
-                                                "'. Status code: " +
-                                                response.statusCode() +
-                                                ". Message: " +
-                                                response.statusMessage(),
-                                                null
-                                            )
-                                        );
-
-                                        // Close client
-                                        httpClient.close();
-                                    }
-                                }
-                            });
-
-                            request.exceptionHandler(throwable -> {
-                                try {
-                                    promise.fail(throwable);
-
-                                    // Close client
-                                    httpClient.close();
-                                } catch (IllegalStateException ise) {
-                                    // Do not take care about exception when closing client
-                                }
-                            });
-
-                            request.end();
-                        }
-                    }
-                );
+                    request.end();
+                });
         } catch (Exception ex) {
             logger.error("Unable to fetch content using HTTP", ex);
             promise.fail(ex);

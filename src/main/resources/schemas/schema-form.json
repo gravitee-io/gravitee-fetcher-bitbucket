@@ -1,80 +1,69 @@
 {
-  "type": "object",
-  "title": "bitbucket",
-  "properties": {
-    "bitbucketUrl": {
-      "title": "Bitbucket api url",
-      "description": "Bitbucket API url (e.g. https://api.bitbucket.org/2.0)",
-      "type": "string",
-      "default": "https://api.bitbucket.org/2.0"
-    },
-    "useSystemProxy": {
-      "title": "Use system proxy",
-      "description": "Use the system proxy configured by your administrator.",
-      "type": "boolean"
-    },
-    "username": {
-      "title": "Username",
-      "description": "Username or organization",
-      "type": "string"
-    },
-    "repository": {
-      "title": "Repository",
-      "description": "Repository name",
-      "type": "string"
-    },
-    "branchOrTag": {
-      "title": "Ref",
-      "description": "Branch name or tag (e.g. master)",
-      "type": "string",
-      "default": "master"
-    },
-    "filepath": {
-      "title": "Filepath",
-      "description": "The path to the file to fetch (e.g. /docs/main/README.md)",
-      "type": "string"
-    },
-    "login": {
-      "title": "Login",
-      "description": "the user login used in basic authentication. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#basic-auth",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Use an application password. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#app-pw",
-      "type": "string",
-      "x-schema-form": {
-        "type": "password"
-      }
-    },
-    "autoFetch": {
-      "title": "Auto Fetch",
-      "description": "Trigger periodic update",
-      "type": "boolean",
-      "default": false
-    },
-    "fetchCron": {
-      "title": "Update frequency",
-      "description": "Define update frequency using Crontab pattern.<BR><B>Note:</B> Platform administrator may have configure a max frequency that you cannot exceed",
-      "type": "string"
-    }
-  },
-  "required": [
-    "bitbucketUrl",
-    "username",
-    "repository",
-    "branchOrTag",
-    "filepath",
-    "login",
-    "password"
-  ],
-  "if": {
+    "type": "object",
+    "title": "bitbucket",
     "properties": {
-      "autoFetch": { "const": true }
-    }
-  },
-  "then": { "required": ["fetchCron"] }
+        "bitbucketUrl": {
+            "title": "Bitbucket api url",
+            "description": "Bitbucket API url (e.g. https://api.bitbucket.org/2.0)",
+            "type": "string",
+            "default": "https://api.bitbucket.org/2.0"
+        },
+        "useSystemProxy": {
+            "title": "Use system proxy",
+            "description": "Use the system proxy configured by your administrator.",
+            "type": "boolean"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username or organization",
+            "type": "string"
+        },
+        "repository": {
+            "title": "Repository",
+            "description": "Repository name",
+            "type": "string"
+        },
+        "branchOrTag": {
+            "title": "Ref",
+            "description": "Branch name or tag (e.g. master)",
+            "type": "string",
+            "default": "master"
+        },
+        "filepath": {
+            "title": "Filepath",
+            "description": "The path to the file to fetch (e.g. /docs/main/README.md)",
+            "type": "string"
+        },
+        "login": {
+            "title": "Login",
+            "description": "the user login used in basic authentication. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#basic-auth",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Use an application password. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#app-pw",
+            "type": "string",
+            "x-schema-form": {
+                "type": "password"
+            }
+        },
+        "autoFetch": {
+            "title": "Auto Fetch",
+            "description": "Trigger periodic update",
+            "type": "boolean",
+            "default": false
+        },
+        "fetchCron": {
+            "title": "Update frequency",
+            "description": "Define update frequency using Crontab pattern.<BR><B>Note:</B> Platform administrator may have configure a max frequency that you cannot exceed",
+            "type": "string"
+        }
+    },
+    "required": ["bitbucketUrl", "username", "repository", "branchOrTag", "filepath", "login", "password"],
+    "if": {
+        "properties": {
+            "autoFetch": { "const": true }
+        }
+    },
+    "then": { "required": ["fetchCron"] }
 }
-
-
-

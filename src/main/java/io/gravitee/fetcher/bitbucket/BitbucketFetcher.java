@@ -23,7 +23,6 @@ import io.gravitee.fetcher.api.FetcherException;
 import io.gravitee.fetcher.api.Resource;
 import io.gravitee.node.api.Node;
 import io.gravitee.node.api.utils.NodeUtils;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -40,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.support.CronSequenceGenerator;
+import org.springframework.scheduling.support.CronExpression;
 
 /**
  * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
@@ -137,7 +136,7 @@ public class BitbucketFetcher implements Fetcher {
 
         if (bitbucketFetcherConfiguration.isAutoFetch() && bitbucketFetcherConfiguration.getFetchCron() != null) {
             try {
-                new CronSequenceGenerator(bitbucketFetcherConfiguration.getFetchCron());
+                CronExpression.parse(bitbucketFetcherConfiguration.getFetchCron());
             } catch (IllegalArgumentException e) {
                 throw new FetcherException("Cron expression is invalid", e);
             }

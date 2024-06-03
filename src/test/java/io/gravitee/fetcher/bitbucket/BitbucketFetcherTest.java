@@ -18,16 +18,16 @@ package io.gravitee.fetcher.bitbucket;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.gravitee.fetcher.api.FetcherException;
 import io.vertx.core.Vertx;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -35,30 +35,30 @@ import org.springframework.test.util.ReflectionTestUtils;
  * @author GraviteeSource Team
  */
 
-public class BitbucketFetcherTest {
+class BitbucketFetcherTest {
 
-    @ClassRule
-    public static final WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+    @RegisterExtension
+    static WireMockExtension wiremock = WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
-    private BitbucketFetcher fetcher = new BitbucketFetcher(null);
+    private final BitbucketFetcher fetcher = new BitbucketFetcher(null);
 
-    private Vertx vertx = Vertx.vertx();
+    private final Vertx vertx = Vertx.vertx();
 
-    @Before
+    @BeforeEach
     public void init() {
         ReflectionTestUtils.setField(fetcher, "vertx", vertx);
     }
 
     @Test
     public void shouldNotFetchWithoutContent() throws FetcherException {
-        stubFor(
+        wiremock.stubFor(
             get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
                 .willReturn(aResponse().withStatus(200).withBody(""))
         );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
-        config.setBitbucketUrl("http://localhost:" + wireMockRule.port() + "/2.0");
+        config.setBitbucketUrl("http://localhost:" + wiremock.getPort() + "/2.0");
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
@@ -71,11 +71,13 @@ public class BitbucketFetcherTest {
 
     @Test
     public void shouldNotFetchEmptyBody() throws Exception {
-        stubFor(get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(200)));
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(200))
+        );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
-        config.setBitbucketUrl("http://localhost:" + wireMockRule.port() + "/2.0");
+        config.setBitbucketUrl("http://localhost:" + wiremock.getPort() + "/2.0");
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
@@ -90,14 +92,14 @@ public class BitbucketFetcherTest {
     public void shouldFetchContent() throws Exception {
         String content = "Gravitee.io is awesome!";
 
-        stubFor(
+        wiremock.stubFor(
             get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
                 .willReturn(aResponse().withStatus(200).withBody(content))
         );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
-        config.setBitbucketUrl("http://localhost:" + wireMockRule.port() + "/2.0");
+        config.setBitbucketUrl("http://localhost:" + wiremock.getPort() + "/2.0");
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
@@ -113,28 +115,23 @@ public class BitbucketFetcherTest {
         assertThat(decoded).isEqualTo(content);
     }
 
-    @Test(expected = FetcherException.class)
+    @Test
     public void shouldThrowExceptionWhenStatusNot200() throws Exception {
-        stubFor(
+        wiremock.stubFor(
             get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
                 .willReturn(aResponse().withStatus(401).withBody("{\n" + "  \"message\": \"401 Unauthorized\"\n" + "}"))
         );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
         config.setUsername("MyUserName");
-        config.setBitbucketUrl("http://localhost:" + wireMockRule.port() + "/2.0");
+        config.setBitbucketUrl("http://localhost:" + wiremock.getPort() + "/2.0");
         config.setBranchOrTag("MyBranch");
         config.setRepository("MyRepo");
         ReflectionTestUtils.setField(fetcher, "bitbucketFetcherConfiguration", config);
 
-        try {
-            fetcher.fetch();
-        } catch (FetcherException fe) {
-            assertThat(fe.getMessage().contains("Status code: 401"));
-            assertThat(fe.getMessage().contains("Message: 401 Unauthorized"));
-            throw fe;
-        }
-
-        fail("Fetch response with status code != 200 does not throw Exception");
+        assertThatThrownBy(fetcher::fetch)
+            .isInstanceOf(FetcherException.class)
+            .hasMessageContaining("Status code: 401")
+            .hasMessageContaining("Message: Unauthorized");
     }
 }

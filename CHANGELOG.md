@@ -1,3 +1,11 @@
+## [2.0.1](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/compare/2.0.0...2.0.1) (2024-06-10)
+
+
+### Bug Fixes
+
+* **deps:** update dependency org.wiremock:wiremock-standalone to v3.6.0 ([942e8b2](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/commit/942e8b261305d75d59d187fc3ce30cffff4c3d65))
+* use right scope for lib ([9b53dfe](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/commit/9b53dfe9578ee1942ca3cc58e5ac40ad54a8036f))
+
 # [2.0.0](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/compare/1.7.1...2.0.0) (2024-06-05)
 
 

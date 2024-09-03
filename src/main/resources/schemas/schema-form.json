@@ -10,7 +10,7 @@
         },
         "useSystemProxy": {
             "title": "Use system proxy",
-            "description": "Use the system proxy configured by your administrator.",
+            "description": "Use the system proxy configured by your administrator",
             "type": "boolean"
         },
         "username": {
@@ -36,27 +36,35 @@
         },
         "login": {
             "title": "Login",
-            "description": "the user login used in basic authentication. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#basic-auth",
+            "description": "the user login used in basic authentication. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#basic-auth for details.",
             "type": "string"
         },
         "password": {
             "title": "Password",
-            "description": "Use an application password. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#app-pw",
+            "description": "Use an application password. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#app-pw for details.",
             "type": "string",
             "x-schema-form": {
                 "type": "password"
             }
         },
         "autoFetch": {
-            "title": "Auto Fetch",
-            "description": "Trigger periodic update",
+            "title": "Enable Auto Fetch",
+            "description": "Enable a periodic update of this documentation page",
             "type": "boolean",
             "default": false
         },
         "fetchCron": {
             "title": "Update frequency",
-            "description": "Define update frequency using Crontab pattern.<BR><B>Note:</B> Platform administrator may have configure a max frequency that you cannot exceed",
-            "type": "string"
+            "description": "Define update frequency using Crontab pattern. Note: Platform administrator may have configured a max frequency that you cannot exceed.",
+            "type": "string",
+            "format": "gio-cron",
+            "gioConfig": {
+                "displayIf": {
+                    "$eq": {
+                        "value.autoFetch": true
+                    }
+                }
+            }
         }
     },
     "required": ["bitbucketUrl", "username", "repository", "branchOrTag", "filepath", "login", "password"],

@@ -1,6 +1,7 @@
 {
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
-    "title": "bitbucket",
+    "title": "Bitbucket",
     "properties": {
         "bitbucketUrl": {
             "title": "Bitbucket api url",
@@ -25,7 +26,7 @@
         },
         "branchOrTag": {
             "title": "Ref",
-            "description": "Branch name or tag (e.g. master)",
+            "description": "Branch name or tag (e.g. master). Default to master.",
             "type": "string",
             "default": "master"
         },
@@ -36,7 +37,7 @@
         },
         "login": {
             "title": "Login",
-            "description": "the user login used in basic authentication. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#basic-auth for details.",
+            "description": "The user login used in basic authentication. See https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication#basic-auth for details.",
             "type": "string"
         },
         "password": {
@@ -55,7 +56,7 @@
         },
         "fetchCron": {
             "title": "Update frequency",
-            "description": "Define update frequency using Crontab pattern. Note: Platform administrator may have configured a max frequency that you cannot exceed.",
+            "description": "Define update frequency using Crontab pattern. Leaving it empty will not trigger any update. Note: Platform administrator may have configured a max frequency that you cannot exceed.",
             "type": "string",
             "format": "gio-cron",
             "gioConfig": {
@@ -67,11 +68,5 @@
             }
         }
     },
-    "required": ["bitbucketUrl", "username", "repository", "branchOrTag", "filepath", "login", "password"],
-    "if": {
-        "properties": {
-            "autoFetch": { "const": true }
-        }
-    },
-    "then": { "required": ["fetchCron"] }
+    "required": ["bitbucketUrl", "username", "repository", "branchOrTag", "filepath", "login", "password"]
 }

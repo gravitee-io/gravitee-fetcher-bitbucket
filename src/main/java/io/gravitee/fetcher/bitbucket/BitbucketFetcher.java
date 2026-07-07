@@ -36,8 +36,7 @@ import java.net.URI;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.CustomLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.support.CronExpression;
@@ -46,9 +45,8 @@ import org.springframework.scheduling.support.CronExpression;
  * @author Nicolas GERAUD (nicolas.geraud at graviteesource.com)
  * @author GraviteeSource Team
  */
+@CustomLog
 public class BitbucketFetcher implements Fetcher {
-
-    private static final Logger logger = LoggerFactory.getLogger(BitbucketFetcher.class);
 
     private static final String HTTPS_SCHEME = "https";
 
@@ -101,7 +99,7 @@ public class BitbucketFetcher implements Fetcher {
             Buffer buffer = fetchContent().join();
             final Resource resource = new Resource();
             if (buffer == null || buffer.length() == 0) {
-                logger.warn("Something goes wrong, Bitbucket responds with a status 200 but the content is empty.");
+                log.warn("Something goes wrong, Bitbucket responds with a status 200 but the content is empty.");
             } else {
                 resource.setContent(new ByteArrayInputStream(buffer.getBytes()));
                 final HashMap<String, Object> metadata = new HashMap<>(1);
@@ -111,7 +109,7 @@ public class BitbucketFetcher implements Fetcher {
             }
             return resource;
         } catch (Exception ex) {
-            logger.error(ex.getMessage(), ex);
+            log.error(ex.getMessage(), ex);
             throw new FetcherException("Unable to fetch Bitbucket content (" + ex.getMessage() + ")", ex);
         }
     }
@@ -259,7 +257,7 @@ public class BitbucketFetcher implements Fetcher {
                 .onSuccess(promise::complete)
                 .onFailure(promise::fail);
         } catch (Exception ex) {
-            logger.error("Unable to fetch content using HTTP", ex);
+            log.error("Unable to fetch content using HTTP", ex);
             promise.fail(ex);
         }
 

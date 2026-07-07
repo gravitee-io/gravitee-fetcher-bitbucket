@@ -23,6 +23,7 @@ import io.gravitee.fetcher.api.FetcherException;
 import io.gravitee.fetcher.api.Resource;
 import io.gravitee.node.api.Node;
 import io.gravitee.node.api.utils.NodeUtils;
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -126,10 +127,8 @@ public class BitbucketFetcher implements Fetcher {
             bitbucketFetcherConfiguration.getBitbucketUrl() == null ||
             bitbucketFetcherConfiguration.getRepository() == null ||
             bitbucketFetcherConfiguration.getUsername() == null ||
-            (
-                bitbucketFetcherConfiguration.isAutoFetch() &&
-                (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty())
-            )
+            (bitbucketFetcherConfiguration.isAutoFetch() &&
+                (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty()))
         ) {
             throw new FetcherException("Some required configuration attributes are missing.", null);
         }
@@ -161,12 +160,10 @@ public class BitbucketFetcher implements Fetcher {
     }
 
     private String getEncodedRequestUrl() throws UnsupportedEncodingException {
-        String ref =
-            (
-                (bitbucketFetcherConfiguration.getBranchOrTag() == null || bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty())
-                    ? "master"
-                    : bitbucketFetcherConfiguration.getBranchOrTag().trim()
-            );
+        String ref = ((bitbucketFetcherConfiguration.getBranchOrTag() == null ||
+                    bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty())
+                ? "master"
+                : bitbucketFetcherConfiguration.getBranchOrTag().trim());
 
         return (
             bitbucketFetcherConfiguration.getBitbucketUrl().trim() +
@@ -192,10 +189,11 @@ public class BitbucketFetcher implements Fetcher {
         final HttpClientOptions options = new HttpClientOptions()
             .setSsl(ssl)
             .setTrustAll(true)
-            .setMaxPoolSize(1)
             .setKeepAlive(false)
             .setTcpKeepAlive(false)
             .setConnectTimeout(httpClientTimeout);
+
+        final PoolOptions poolOptions = new PoolOptions().setHttp1MaxSize(1);
 
         if (bitbucketFetcherConfiguration.isUseSystemProxy()) {
             ProxyOptions proxyOptions = new ProxyOptions();
@@ -214,7 +212,9 @@ public class BitbucketFetcher implements Fetcher {
             options.setProxyOptions(proxyOptions);
         }
 
-        final HttpClient httpClient = vertx.createHttpClient(options);
+        final HttpClient httpClient = vertx.createHttpClient(options, poolOptions);
+        // Ensure the HTTP client is closed exactly once when the promise completes, regardless of success or failure
+        promise.future().onComplete(ar -> httpClient.close());
 
         final int port = requestUri.getPort() != -1 ? requestUri.getPort() : (HTTPS_SCHEME.equals(requestUri.getScheme()) ? 443 : 80);
 
@@ -230,70 +230,34 @@ public class BitbucketFetcher implements Fetcher {
                 .setFollowRedirects(true);
 
             if (bitbucketFetcherConfiguration.getLogin() != null && bitbucketFetcherConfiguration.getPassword() != null) {
-                String encoding = Base64
-                    .getEncoder()
-                    .encodeToString(
-                        (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes()
-                    );
+                String encoding = Base64.getEncoder().encodeToString(
+                    (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes()
+                );
                 reqOptions.putHeader("Authorization", "Basic " + encoding);
             }
 
             httpClient
                 .request(reqOptions)
-                .onFailure(throwable -> {
-                    promise.fail(throwable);
-
-                    // Close client
-                    httpClient.close();
+                .compose(HttpClientRequest::send)
+                .compose(response -> {
+                    if (response.statusCode() == HttpStatusCode.OK_200) {
+                        return response.body();
+                    } else {
+                        return Future.failedFuture(
+                            new FetcherException(
+                                "Unable to fetch '" +
+                                    url +
+                                    "'. Status code: " +
+                                    response.statusCode() +
+                                    ". Message: " +
+                                    response.statusMessage(),
+                                null
+                            )
+                        );
+                    }
                 })
-                .onSuccess(request -> {
-                    request.response(asyncResponse -> {
-                        if (asyncResponse.failed()) {
-                            promise.fail(asyncResponse.cause());
-
-                            // Close client
-                            httpClient.close();
-                        } else {
-                            HttpClientResponse response = asyncResponse.result();
-                            if (response.statusCode() == HttpStatusCode.OK_200) {
-                                response.bodyHandler(buffer -> {
-                                    promise.complete(buffer);
-
-                                    // Close client
-                                    httpClient.close();
-                                });
-                            } else {
-                                promise.fail(
-                                    new FetcherException(
-                                        "Unable to fetch '" +
-                                        url +
-                                        "'. Status code: " +
-                                        response.statusCode() +
-                                        ". Message: " +
-                                        response.statusMessage(),
-                                        null
-                                    )
-                                );
-
-                                // Close client
-                                httpClient.close();
-                            }
-                        }
-                    });
-
-                    request.exceptionHandler(throwable -> {
-                        try {
-                            promise.fail(throwable);
-
-                            // Close client
-                            httpClient.close();
-                        } catch (IllegalStateException ise) {
-                            // Do not take care about exception when closing client
-                        }
-                    });
-
-                    request.end();
-                });
+                .onSuccess(promise::complete)
+                .onFailure(promise::fail);
         } catch (Exception ex) {
             logger.error("Unable to fetch content using HTTP", ex);
             promise.fail(ex);

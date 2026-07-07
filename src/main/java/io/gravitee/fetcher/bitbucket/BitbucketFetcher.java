@@ -36,6 +36,7 @@ import java.net.URI;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import lombok.CustomLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -109,8 +110,9 @@ public class BitbucketFetcher implements Fetcher {
             }
             return resource;
         } catch (Exception ex) {
-            log.error(ex.getMessage(), ex);
-            throw new FetcherException("Unable to fetch Bitbucket content (" + ex.getMessage() + ")", ex);
+            Throwable cause = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
+            log.error(cause.getMessage(), cause);
+            throw new FetcherException("Unable to fetch Bitbucket content (" + cause.getMessage() + ")", cause);
         }
     }
 
@@ -257,7 +259,6 @@ public class BitbucketFetcher implements Fetcher {
                 .onSuccess(promise::complete)
                 .onFailure(promise::fail);
         } catch (Exception ex) {
-            log.error("Unable to fetch content using HTTP", ex);
             promise.fail(ex);
         }
 

@@ -37,6 +37,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import lombok.CustomLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -191,7 +192,9 @@ public class BitbucketFetcher implements Fetcher {
             .setTrustAll(true)
             .setKeepAlive(false)
             .setTcpKeepAlive(false)
-            .setConnectTimeout(httpClientTimeout);
+            .setConnectTimeout(httpClientTimeout)
+            .setIdleTimeout(httpClientTimeout)
+            .setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
 
         final PoolOptions poolOptions = new PoolOptions().setHttp1MaxSize(1);
 

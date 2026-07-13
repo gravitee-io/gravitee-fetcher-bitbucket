@@ -20,13 +20,18 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.gravitee.fetcher.api.FetcherException;
 import io.vertx.core.Vertx;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -44,9 +49,17 @@ class BitbucketFetcherTest {
 
     private final Vertx vertx = Vertx.vertx();
 
+    private Vertx testVertx;
+
     @BeforeEach
     public void init() {
+        testVertx = Vertx.vertx();
         ReflectionTestUtils.setField(fetcher, "vertx", vertx);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        testVertx.close().toCompletionStage().toCompletableFuture().get(10, TimeUnit.SECONDS);
     }
 
     @Test
@@ -136,5 +149,61 @@ class BitbucketFetcherTest {
             .isInstanceOf(FetcherException.class)
             .hasMessageContaining("Status code: 401")
             .hasMessageContaining("Message: Unauthorized");
+    }
+
+    @Test
+    void should_expose_original_cause_instead_of_async_wrapper_when_fetch_fails() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(404))
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+
+        assertThatThrownBy(bitbucketFetcher::fetch)
+            .isInstanceOf(FetcherException.class)
+            .hasCauseInstanceOf(FetcherException.class)
+            .cause()
+            .isNotInstanceOf(CompletionException.class);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void should_fail_fast_when_connection_is_closed_while_reading_response() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withFault(Fault.RANDOM_DATA_THEN_CLOSE)
+            )
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+
+        assertThatThrownBy(bitbucketFetcher::fetch).isInstanceOf(FetcherException.class);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void should_fail_when_connection_stalls_while_reading_body() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withStatus(200).withBody("Gravitee.io is awesome!").withChunkedDribbleDelay(20, 20_000)
+            )
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(500);
+
+        assertThatThrownBy(bitbucketFetcher::fetch).isInstanceOf(FetcherException.class);
+    }
+
+    private BitbucketFetcher bitbucketFetcher(int timeoutMs) {
+        BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
+        config.setFilepath("path/to/file");
+        config.setUsername("MyUserName");
+        config.setBitbucketUrl("http://localhost:" + wiremock.getPort() + "/2.0");
+        config.setBranchOrTag("MyBranch");
+        config.setRepository("MyRepo");
+        BitbucketFetcher bitbucketFetcher = new BitbucketFetcher(config);
+        ReflectionTestUtils.setField(bitbucketFetcher, "httpClientTimeout", timeoutMs);
+        ReflectionTestUtils.setField(bitbucketFetcher, "vertx", testVertx);
+        return bitbucketFetcher;
     }
 }

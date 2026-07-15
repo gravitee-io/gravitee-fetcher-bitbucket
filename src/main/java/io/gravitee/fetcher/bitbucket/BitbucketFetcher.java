@@ -134,7 +134,7 @@ public class BitbucketFetcher implements Fetcher {
             throw new FetcherException("Some required configuration attributes are missing.", null);
         }
 
-        if (bitbucketFetcherConfiguration.isAutoFetch() && bitbucketFetcherConfiguration.getFetchCron() != null) {
+        if (bitbucketFetcherConfiguration.isAutoFetch()) {
             try {
                 CronExpression.parse(bitbucketFetcherConfiguration.getFetchCron());
             } catch (IllegalArgumentException e) {
@@ -242,23 +242,7 @@ public class BitbucketFetcher implements Fetcher {
             httpClient
                 .request(reqOptions)
                 .compose(HttpClientRequest::send)
-                .compose(response -> {
-                    if (response.statusCode() == HttpStatusCode.OK_200) {
-                        return response.body();
-                    } else {
-                        return Future.failedFuture(
-                            new FetcherException(
-                                "Unable to fetch '" +
-                                    url +
-                                    "'. Status code: " +
-                                    response.statusCode() +
-                                    ". Message: " +
-                                    response.statusMessage(),
-                                null
-                            )
-                        );
-                    }
-                })
+                .compose(response -> handleResponse(url, response))
                 .onSuccess(promise::complete)
                 .onFailure(promise::fail);
         } catch (Exception ex) {
@@ -266,5 +250,18 @@ public class BitbucketFetcher implements Fetcher {
         }
 
         return promise.future().toCompletionStage().toCompletableFuture();
+    }
+
+    private Future<Buffer> handleResponse(String url, HttpClientResponse response) {
+        if (response.statusCode() == HttpStatusCode.OK_200) {
+            return response.body();
+        } else {
+            return Future.failedFuture(
+                new FetcherException(
+                    "Unable to fetch '" + url + "'. Status code: " + response.statusCode() + ". Message: " + response.statusMessage(),
+                    null
+                )
+            );
+        }
     }
 }

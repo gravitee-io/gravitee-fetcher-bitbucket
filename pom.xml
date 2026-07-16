@@ -32,6 +32,7 @@
     <version>3.0.0</version>
 
     <name>Gravitee.io APIM - Fetcher - Bitbucket</name>
+    <description>Fetch documentation content from a Bitbucket Cloud repository</description>
 
     <properties>
         <gravitee-bom.version>9.0.3</gravitee-bom.version>

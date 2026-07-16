@@ -29,7 +29,15 @@ import lombok.Setter;
 public class BitbucketFetcherConfiguration implements FetcherConfiguration {
 
     private String bitbucketUrl;
+
+    /**
+     * Workspace (or username) owning the repository, used to build the repository URL — not an authentication credential.
+     * Field names below no longer match what they hold ({@code login} = Atlassian account email, {@code password} = Atlassian
+     * API token since app passwords were removed); they are kept as-is because they are the JSON keys of configurations
+     * already stored in the APIM database. The user-facing labels live in schemas/schema-form.json.
+     */
     private String username;
+
     private String repository;
     private String branchOrTag;
     private String filepath;

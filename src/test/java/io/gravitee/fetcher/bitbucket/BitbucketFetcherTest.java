@@ -272,6 +272,28 @@ class BitbucketFetcherTest {
         }
     }
 
+    @Test
+    void should_fail_with_clear_message_when_filepath_is_missing() {
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+        BitbucketFetcherConfiguration config = (BitbucketFetcherConfiguration) bitbucketFetcher.getConfiguration();
+        config.setFilepath(null);
+
+        assertThatThrownBy(bitbucketFetcher::fetch)
+            .isInstanceOf(FetcherException.class)
+            .hasMessageContaining("Some required configuration attributes are missing");
+    }
+
+    @Test
+    void should_fail_with_clear_message_when_filepath_is_blank() {
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+        BitbucketFetcherConfiguration config = (BitbucketFetcherConfiguration) bitbucketFetcher.getConfiguration();
+        config.setFilepath("   ");
+
+        assertThatThrownBy(bitbucketFetcher::fetch)
+            .isInstanceOf(FetcherException.class)
+            .hasMessageContaining("Some required configuration attributes are missing");
+    }
+
     private BitbucketFetcher bitbucketFetcher(int timeoutMs) {
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");

@@ -101,7 +101,7 @@ public class BitbucketFetcher implements Fetcher {
             Buffer buffer = fetchContent().join();
             final Resource resource = new Resource();
             if (buffer == null || buffer.length() == 0) {
-                log.warn("Something goes wrong, Bitbucket responds with a status 200 but the content is empty.");
+                log.warn("Bitbucket responded with a status 200 but the content is empty.");
             } else {
                 resource.setContent(new ByteArrayInputStream(buffer.getBytes()));
                 final HashMap<String, Object> metadata = new HashMap<>(1);
@@ -258,10 +258,32 @@ public class BitbucketFetcher implements Fetcher {
         } else {
             return Future.failedFuture(
                 new FetcherException(
-                    "Unable to fetch '" + url + "'. Status code: " + response.statusCode() + ". Message: " + response.statusMessage(),
+                    "Unable to fetch '" +
+                        url +
+                        "'. Status code: " +
+                        response.statusCode() +
+                        ". Message: " +
+                        response.statusMessage() +
+                        authenticationHint(response.statusCode()),
                     null
                 )
             );
         }
+    }
+
+    private static String authenticationHint(int statusCode) {
+        if (statusCode == HttpStatusCode.UNAUTHORIZED_401) {
+            return (
+                ". Authentication failed: check that the login is your Atlassian account email and the password is a valid" +
+                " Atlassian API token (Bitbucket Cloud app passwords are no longer supported)."
+            );
+        }
+        if (statusCode == HttpStatusCode.FORBIDDEN_403) {
+            return (
+                ". Access denied: the API token may be missing the 'read:repository:bitbucket' scope," +
+                " or the account has no access to this repository."
+            );
+        }
+        return "";
     }
 }

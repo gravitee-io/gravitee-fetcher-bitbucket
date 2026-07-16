@@ -19,6 +19,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
@@ -26,6 +27,7 @@ import io.gravitee.fetcher.api.FetcherException;
 import io.vertx.core.Vertx;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -192,6 +194,82 @@ class BitbucketFetcherTest {
         BitbucketFetcher bitbucketFetcher = bitbucketFetcher(500);
 
         assertThatThrownBy(bitbucketFetcher::fetch).isInstanceOf(FetcherException.class);
+    }
+
+    @Test
+    void should_send_basic_auth_header_built_from_login_and_password() throws Exception {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withStatus(200).withBody("content")
+            )
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+        BitbucketFetcherConfiguration config = (BitbucketFetcherConfiguration) bitbucketFetcher.getConfiguration();
+        config.setLogin("john.doe@example.com");
+        config.setPassword("my-api-token");
+
+        bitbucketFetcher.fetch();
+
+        String expectedBasicAuth =
+            "Basic " + Base64.getEncoder().encodeToString("john.doe@example.com:my-api-token".getBytes(StandardCharsets.UTF_8));
+        wiremock.verify(
+            getRequestedFor(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).withHeader(
+                "Authorization",
+                equalTo(expectedBasicAuth)
+            )
+        );
+    }
+
+    @Test
+    void should_give_actionable_hint_when_bitbucket_returns_401() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(401))
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+
+        assertThatThrownBy(bitbucketFetcher::fetch)
+            .isInstanceOf(FetcherException.class)
+            .hasMessageContaining("Status code: 401")
+            .hasMessageContaining("Atlassian account email")
+            .hasMessageContaining("Atlassian API token");
+    }
+
+    @Test
+    void should_give_scope_hint_when_bitbucket_returns_403() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(403))
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+
+        assertThatThrownBy(bitbucketFetcher::fetch)
+            .isInstanceOf(FetcherException.class)
+            .hasMessageContaining("Status code: 403")
+            .hasMessageContaining("read:repository:bitbucket");
+    }
+
+    @Test
+    void should_never_include_credentials_in_error_message() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(401))
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+        BitbucketFetcherConfiguration config = (BitbucketFetcherConfiguration) bitbucketFetcher.getConfiguration();
+        config.setLogin("john.doe@example.com");
+        config.setPassword("my-secret-api-token");
+        String base64Credentials = Base64.getEncoder().encodeToString(
+            "john.doe@example.com:my-secret-api-token".getBytes(StandardCharsets.UTF_8)
+        );
+
+        Throwable thrown = catchThrowable(bitbucketFetcher::fetch);
+
+        assertThat(thrown).isInstanceOf(FetcherException.class);
+        for (Throwable current = thrown; current != null; current = current.getCause()) {
+            assertThat(current.getMessage()).doesNotContain("my-secret-api-token").doesNotContain(base64Credentials);
+        }
     }
 
     private BitbucketFetcher bitbucketFetcher(int timeoutMs) {

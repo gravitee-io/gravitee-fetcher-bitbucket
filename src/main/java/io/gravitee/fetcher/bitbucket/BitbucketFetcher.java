@@ -33,6 +33,7 @@ import io.vertx.core.net.ProxyType;
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
@@ -236,7 +237,9 @@ public class BitbucketFetcher implements Fetcher {
 
             if (bitbucketFetcherConfiguration.getLogin() != null && bitbucketFetcherConfiguration.getPassword() != null) {
                 String encoding = Base64.getEncoder().encodeToString(
-                    (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes()
+                    (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes(
+                        StandardCharsets.UTF_8
+                    )
                 );
                 reqOptions.putHeader("Authorization", "Basic " + encoding);
             }

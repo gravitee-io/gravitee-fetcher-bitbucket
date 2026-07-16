@@ -11,5 +11,23 @@ endif::[]
 
 == Documentation
 
-This plugin allow Gravitee.io to fetch content from a bitbucket repository.
+This plugin allows Gravitee.io to fetch content from a Bitbucket Cloud repository.
 It's primarily used to fetch documentation.
+
+== Authentication
+
+Bitbucket Cloud is deprecating app passwords (fully disabled on July 28, 2026). To fetch content from a private
+repository, authenticate with an https://support.atlassian.com/bitbucket-cloud/docs/using-api-tokens/[Atlassian API token]:
+
+1. Create an API token with scopes at https://id.atlassian.com/manage-profile/security/api-tokens (select the
+   *Bitbucket* app and grant the `read:repository:bitbucket` scope).
+2. In the fetcher configuration, set *Atlassian account email* (`login`) to the email address of your Atlassian
+   account — not your Bitbucket username — and *API token* (`password`) to the token created above.
+
+The *Workspace* field (`username`) is unrelated to authentication: it is the ID of the workspace (or username)
+that owns the repository, used to build the repository URL (`/repositories/{workspace}/{repository}`).
+
+With an invalid email/token pair Bitbucket returns a `401`; with a valid token missing the
+`read:repository:bitbucket` scope it returns a `403`.
+
+Alternatively, https://support.atlassian.com/bitbucket-cloud/docs/repository-access-tokens/[repository access tokens] can be used with `x-token-auth` as the login and the token as the password.

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.gravitee.fetcher.api.FetcherException;
+import io.gravitee.fetcher.api.ResourceNotFoundException;
 import io.vertx.core.Vertx;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -156,7 +157,7 @@ class BitbucketFetcherTest {
     @Test
     void should_expose_original_cause_instead_of_async_wrapper_when_fetch_fails() {
         wiremock.stubFor(
-            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(404))
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(aResponse().withStatus(500))
         );
 
         BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
@@ -292,6 +293,37 @@ class BitbucketFetcherTest {
         assertThatThrownBy(bitbucketFetcher::fetch)
             .isInstanceOf(FetcherException.class)
             .hasMessageContaining("Some required configuration attributes are missing");
+    }
+
+    @Test
+    void should_fetch_content_when_filepath_has_leading_slash() throws Exception {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withStatus(200).withBody("Gravitee.io is awesome!")
+            )
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+        ((BitbucketFetcherConfiguration) bitbucketFetcher.getConfiguration()).setFilepath("/path/to/file");
+
+        assertThat(new String(bitbucketFetcher.fetch().getContent().readAllBytes())).isEqualTo("Gravitee.io is awesome!");
+    }
+
+    @Test
+    void should_throw_resource_not_found_with_filepath_repository_and_ref_when_response_is_404() {
+        wiremock.stubFor(
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/unknown")).willReturn(aResponse().withStatus(404))
+        );
+
+        BitbucketFetcher bitbucketFetcher = bitbucketFetcher(10_000);
+        ((BitbucketFetcherConfiguration) bitbucketFetcher.getConfiguration()).setFilepath("/path/to/unknown");
+
+        assertThatThrownBy(bitbucketFetcher::fetch)
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("Unable to fetch file '/path/to/unknown'")
+            .hasMessageContaining("MyUserName/MyRepo")
+            .hasMessageContaining("ref: MyBranch")
+            .hasNoCause();
     }
 
     private BitbucketFetcher bitbucketFetcher(int timeoutMs) {

@@ -21,6 +21,7 @@ import io.gravitee.fetcher.api.Fetcher;
 import io.gravitee.fetcher.api.FetcherConfiguration;
 import io.gravitee.fetcher.api.FetcherException;
 import io.gravitee.fetcher.api.Resource;
+import io.gravitee.fetcher.api.ResourceNotFoundException;
 import io.gravitee.node.api.Node;
 import io.gravitee.node.api.utils.NodeUtils;
 import io.vertx.core.Future;
@@ -113,6 +114,9 @@ public class BitbucketFetcher implements Fetcher {
             return resource;
         } catch (Exception ex) {
             Throwable cause = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
+            if (cause instanceof ResourceNotFoundException resourceNotFoundException) {
+                throw resourceNotFoundException;
+            }
             log.error(cause.getMessage(), cause);
             throw new FetcherException("Unable to fetch Bitbucket content (" + cause.getMessage() + ")", cause);
         }
@@ -178,7 +182,31 @@ public class BitbucketFetcher implements Fetcher {
             "/src/" +
             ref +
             "/" +
-            bitbucketFetcherConfiguration.getFilepath()
+            normalizeFilepath(bitbucketFetcherConfiguration.getFilepath())
+        );
+    }
+
+    /** Accepts both filepath forms (with or without leading slash); never persisted back to the configuration. */
+    private static String normalizeFilepath(String filepath) {
+        return filepath == null ? "" : filepath.trim().replaceAll("^/+", "");
+    }
+
+    private String buildNotFoundMessage(String url) {
+        String ref = bitbucketFetcherConfiguration.getBranchOrTag() == null ||
+            bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty()
+            ? "master"
+            : bitbucketFetcherConfiguration.getBranchOrTag().trim();
+        return (
+            "Unable to fetch file '" +
+            bitbucketFetcherConfiguration.getFilepath() +
+            "' from Bitbucket repository '" +
+            bitbucketFetcherConfiguration.getUsername() +
+            "/" +
+            bitbucketFetcherConfiguration.getRepository() +
+            "' (ref: " +
+            ref +
+            "): resource not found. Requested URL: " +
+            url
         );
     }
 
@@ -260,6 +288,8 @@ public class BitbucketFetcher implements Fetcher {
     private Future<Buffer> handleResponse(String url, HttpClientResponse response) {
         if (response.statusCode() == HttpStatusCode.OK_200) {
             return response.body();
+        } else if (response.statusCode() == HttpStatusCode.NOT_FOUND_404) {
+            return Future.failedFuture(new ResourceNotFoundException(buildNotFoundMessage(url), null));
         } else {
             return Future.failedFuture(
                 new FetcherException(

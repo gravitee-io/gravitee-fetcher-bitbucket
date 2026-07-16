@@ -128,6 +128,8 @@ public class BitbucketFetcher implements Fetcher {
             bitbucketFetcherConfiguration.getBitbucketUrl() == null ||
             bitbucketFetcherConfiguration.getRepository() == null ||
             bitbucketFetcherConfiguration.getUsername() == null ||
+            bitbucketFetcherConfiguration.getFilepath() == null ||
+            bitbucketFetcherConfiguration.getFilepath().isBlank() ||
             (bitbucketFetcherConfiguration.isAutoFetch() &&
                 (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty()))
         ) {

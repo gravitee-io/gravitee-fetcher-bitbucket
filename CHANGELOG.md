@@ -1,3 +1,12 @@
+## [3.0.1](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/compare/3.0.0...3.0.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* encode basic auth credentials in UTF-8 ([32a5608](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/commit/32a56085aa6415fbeba1c07cc16d87bfade95cd3))
+* guide users to Atlassian API tokens in form labels and auth errors ([e8fa7e7](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/commit/e8fa7e7b05b4dd6bab243ed457c96f66b6940c77))
+* reject configuration when filepath is missing ([b055206](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/commit/b055206a2815c9c799814bf14339aa11f3cfe813))
+
 # [3.0.0](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/compare/2.1.1...3.0.0) (2026-07-15)
 
 

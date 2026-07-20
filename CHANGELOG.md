@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/compare/3.0.1...3.0.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* normalize filepath and clarify not-found error ([2cf3a1f](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/commit/2cf3a1fa62c1097326b05e9d9f24e4ac2a78c622))
+
 ## [3.0.1](https://github.com/gravitee-io/gravitee-fetcher-bitbucket/compare/3.0.0...3.0.1) (2026-07-16)
 
 

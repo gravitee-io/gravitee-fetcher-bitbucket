@@ -126,10 +126,8 @@ public class BitbucketFetcher implements Fetcher {
             bitbucketFetcherConfiguration.getBitbucketUrl() == null ||
             bitbucketFetcherConfiguration.getRepository() == null ||
             bitbucketFetcherConfiguration.getUsername() == null ||
-            (
-                bitbucketFetcherConfiguration.isAutoFetch() &&
-                (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty())
-            )
+            (bitbucketFetcherConfiguration.isAutoFetch() &&
+                (bitbucketFetcherConfiguration.getFetchCron() == null || bitbucketFetcherConfiguration.getFetchCron().isEmpty()))
         ) {
             throw new FetcherException("Some required configuration attributes are missing.", null);
         }
@@ -161,12 +159,10 @@ public class BitbucketFetcher implements Fetcher {
     }
 
     private String getEncodedRequestUrl() throws UnsupportedEncodingException {
-        String ref =
-            (
-                (bitbucketFetcherConfiguration.getBranchOrTag() == null || bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty())
-                    ? "master"
-                    : bitbucketFetcherConfiguration.getBranchOrTag().trim()
-            );
+        String ref = ((bitbucketFetcherConfiguration.getBranchOrTag() == null ||
+                    bitbucketFetcherConfiguration.getBranchOrTag().trim().isEmpty())
+                ? "master"
+                : bitbucketFetcherConfiguration.getBranchOrTag().trim());
 
         return (
             bitbucketFetcherConfiguration.getBitbucketUrl().trim() +
@@ -230,11 +226,9 @@ public class BitbucketFetcher implements Fetcher {
                 .setFollowRedirects(true);
 
             if (bitbucketFetcherConfiguration.getLogin() != null && bitbucketFetcherConfiguration.getPassword() != null) {
-                String encoding = Base64
-                    .getEncoder()
-                    .encodeToString(
-                        (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes()
-                    );
+                String encoding = Base64.getEncoder().encodeToString(
+                    (bitbucketFetcherConfiguration.getLogin() + ":" + bitbucketFetcherConfiguration.getPassword()).getBytes()
+                );
                 reqOptions.putHeader("Authorization", "Basic " + encoding);
             }
 
@@ -266,11 +260,11 @@ public class BitbucketFetcher implements Fetcher {
                                 promise.fail(
                                     new FetcherException(
                                         "Unable to fetch '" +
-                                        url +
-                                        "'. Status code: " +
-                                        response.statusCode() +
-                                        ". Message: " +
-                                        response.statusMessage(),
+                                            url +
+                                            "'. Status code: " +
+                                            response.statusCode() +
+                                            ". Message: " +
+                                            response.statusMessage(),
                                         null
                                     )
                                 );

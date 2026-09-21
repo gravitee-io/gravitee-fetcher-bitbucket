@@ -52,8 +52,9 @@ class BitbucketFetcherTest {
     @Test
     public void shouldNotFetchWithoutContent() throws FetcherException {
         wiremock.stubFor(
-            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse().withStatus(200).withBody(""))
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withStatus(200).withBody("")
+            )
         );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
@@ -93,8 +94,9 @@ class BitbucketFetcherTest {
         String content = "Gravitee.io is awesome!";
 
         wiremock.stubFor(
-            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse().withStatus(200).withBody(content))
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withStatus(200).withBody(content)
+            )
         );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");
@@ -118,8 +120,9 @@ class BitbucketFetcherTest {
     @Test
     public void shouldThrowExceptionWhenStatusNot200() throws Exception {
         wiremock.stubFor(
-            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file"))
-                .willReturn(aResponse().withStatus(401).withBody("{\n" + "  \"message\": \"401 Unauthorized\"\n" + "}"))
+            get(urlEqualTo("/2.0/repositories/MyUserName/MyRepo/src/MyBranch/path/to/file")).willReturn(
+                aResponse().withStatus(401).withBody("{\n" + "  \"message\": \"401 Unauthorized\"\n" + "}")
+            )
         );
         BitbucketFetcherConfiguration config = new BitbucketFetcherConfiguration();
         config.setFilepath("path/to/file");

@@ -232,7 +232,7 @@ public class BitbucketFetcher implements Fetcher {
 
         Proxy proxy = null;
         if (bitbucketFetcherConfiguration.isUseSystemProxy()) {
-            proxy = HTTPS_SCHEME.equals(requestUri.getScheme())
+            proxy = ssl
                 ? new Proxy(
                     httpClientProxyType,
                     httpClientProxyHttpsHost,
@@ -254,7 +254,7 @@ public class BitbucketFetcher implements Fetcher {
             BitbucketFetcher::buildHttpClient
         );
 
-        final int port = requestUri.getPort() != -1 ? requestUri.getPort() : (HTTPS_SCHEME.equals(requestUri.getScheme()) ? 443 : 80);
+        final int port = requestUri.getPort() != -1 ? requestUri.getPort() : (ssl ? 443 : 80);
 
         try {
             final RequestOptions reqOptions = new RequestOptions()
